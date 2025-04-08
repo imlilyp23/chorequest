@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChoreQuest - Gamified Chore Management</title>
+  <!-- Bootstrap CSS from CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome for game-like icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- Custom CSS -->
+  <style>
+    /* Dark theme with Bootstrap */
+    :root {
+      --bs-body-bg: #212529;
+      --bs-body-color: #f8f9fa;
+      --bs-primary: #0d6efd;
+      --bs-primary-rgb: 13, 110, 253;
+      --bs-secondary: #6c757d;
+      --bs-success: #198754;
+      --bs-info: #0dcaf0;
+      --bs-warning: #ffc107;
+      --bs-danger: #dc3545;
+      --bs-light: #f8f9fa;
+      --bs-dark: #212529;
+      --bs-white: #fff;
+    }
+
+    body {
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      padding-bottom: 2rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* Card overrides */
+    .card {
+      transition: transform 0.2s;
+      margin-bottom: 1.5rem;
+      background-color: #2c3036;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Chat styling */
+    .chat-log, .activity-log {
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background-color: #2c3036;
+      border-radius: 6px;
+    }
+
+    .log-item {
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      border-radius: 6px;
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .log-item:last-child {
+      margin-bottom: 0;
+    }
+
+    /* XP progress bar custom styling */
+    .progress {
+      background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Chore item styling */
+    #choreList .list-group-item {
+      transition: background-color 0.3s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #2c3036;
+      border-color: rgba(255, 255, 255, 0.1);
+      color: var(--bs-body-color);
+    }
+
+    #choreList .list-group-item:hover {
+      background-color: rgba(13, 110, 253, 0.1);
+    }
+
+    /* Animation for completing quests */
+    @keyframes complete-animation {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    .complete-animation {
+      animation: complete-animation 0.5s ease-in-out;
+    }
+
+    /* Player stats section */
+    .player-stats {
+      border-left: 4px solid var(--bs-info);
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(13, 110, 253, 0.5);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(13, 110, 253, 0.8);
+    }
+
+    /* Message styling */
+    .player-message, .parent-message {
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      max-width: 85%;
+    }
+
+    .player-message {
+      background-color: rgba(13, 202, 240, 0.2);
+      margin-right: auto;
+    }
+
+    .parent-message {
+      background-color: rgba(25, 135, 84, 0.2);
+      margin-left: auto;
+    }
+
+    /* Empty state styling */
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--bs-gray-500);
+    }
+
+    /* Level up animation */
+    @keyframes level-up {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .level-up-animation {
+      animation: level-up 1s ease-in-out;
+      color: var(--bs-warning);
+    }
+
+    /* Role cards */
+    .role-card {
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .role-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Connection code styling */
+    #connectionCode {
+      letter-spacing: 0.5rem;
+      text-align: center;
+    }
+
+    #codeInput {
+      letter-spacing: 0.5rem;
+      font-size: 2rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 767.98px) {
+      .player-stats .progress {
+        width: 100%;
+        margin-top: 10px;
+      }
+      
+      .player-stats {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      #connectionCode, #codeInput {
+        letter-spacing: 0.3rem;
+        font-size: 1.5rem;
+      }
+    }
+
+    /* Toast for status messages */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+
+    /* Pulse animation for connection indicator */
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .badge i.fa-wifi {
+      animation: pulse 2s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <header class="mb-4 text-center">
+      <h1 class="display-4"><i class="fas fa-trophy text-warning"></i> ChoreQuest</h1>
+      <p class="lead">Turn everyday chores into epic quests</p>
+    </header>
+
+    <!-- Role Selection -->
+    <div id="roleSelection" class="row justify-content-center mb-5">
+      <div class="col-md-8">
+        <div class="card shadow-lg border-warning">
+          <div class="card-header bg-warning bg-opacity-75 text-dark">
+            <h2 class="card-title mb-0">Choose Your Role</h2>
+          </div>
+          <div class="card-body text-center py-5">
+            <div class="row">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <div class="role-card p-4 rounded border border-primary h-100">
+                  <i class="fas fa-gamepad fa-3x text-primary mb-3"></i>
+                  <h3>Player</h3>
+                  <p>Complete quests, earn XP, and level up</p>
+                  <button class="btn btn-lg btn-primary" onclick="selectRole('player')">
+                    <i class="fas fa-user-check me-2"></i> Select Player
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="role-card p-4 rounded border border-success h-100">
+                  <i class="fas fa-crown fa-3x text-success mb-3"></i>
+                  <h3>Parent</h3>
+                  <p>Create quests and monitor progress</p>
+                  <button class="btn btn-lg btn-success" onclick="selectRole('parent')">
+                    <i class="fas fa-user-check me-2"></i> Select Parent
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connection Code -->
+    <div id="connectionSetup" class="row justify-content-center mb-5 d-none">
+      <div class="col-md-8">
+        <div class="card shadow-lg border-info">
+          <div class="card-header bg-info bg-opacity-75">
+            <h2 class="card-title mb-0" id="connectionHeader">Connect with Code</h2>
+          </div>
+          <div class="card-body text-center py-4">
+            <div id="createCodeSection" class="mb-4 d-none">
+              <h3>Your Connection Code</h3>
+              <div class="d-flex justify-content-center align-items-center gap-3 mb-3">
+                <span id="connectionCode" class="display-6 font-monospace text-warning bg-dark p-3 rounded">----</span>
+                <button class="btn btn-sm btn-secondary" onclick="generateCode()">
+                  <i class="fas fa-sync-alt"></i> New Code
+                </button>
+              </div>
+              <p>Share this code with the other person to connect</p>
+              <button class="btn btn-primary" onclick="setupConnection(true)">
+                <i class="fas fa-check-circle me-2"></i> Ready to Connect
+              </button>
+            </div>
+            <div id="enterCodeSection" class="mb-4 d-none">
+              <h3>Enter Connection Code</h3>
+              <div class="d-flex justify-content-center align-items-center gap-3 mb-3">
+                <input type="text" id="codeInput" class="form-control form-control-lg font-monospace text-center" 
+                  placeholder="Enter 4-digit code" maxlength="4" style="max-width: 200px;">
+              </div>
+              <p>Enter the code shared by the other person</p>
+              <button class="btn btn-primary" onclick="setupConnection(false)">
+                <i class="fas fa-link me-2"></i> Connect
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content (Hidden initially) -->
+    <div id="mainContent" class="row g-4 d-none">
+      <!-- Player Section -->
+      <div id="playerView" class="col-md-12 d-none">
+        <div class="card shadow-lg border-primary h-100">
+          <div class="card-header bg-primary bg-opacity-75">
+            <h2 class="card-title mb-0">
+              <i class="fas fa-gamepad me-2"></i> Player View
+            </h2>
+          </div>
+          <div class="card-body">
+            <!-- Player Stats -->
+            <div class="player-stats bg-opacity-50 p-3 rounded mb-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="mb-0">Level: <span id="playerLevel" class="badge bg-info">1</span></h5>
+                </div>
+                <div class="progress flex-grow-1 mx-3" style="height: 20px;">
+                  <div id="xpProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                       role="progressbar" style="width: 0%;" 
+                       aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <span id="playerXP">0</span> XP
+                  </div>
+                </div>
+                <div>
+                  <span class="badge rounded-pill bg-warning text-dark">
+                    Next: <span id="xpNeeded">50</span> XP
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quests (Chores) -->
+            <div class="quests mb-4">
+              <h4><i class="fas fa-scroll me-2 text-warning"></i> Active Quests</h4>
+              <ul id="choreList" class="list-group"></ul>
+              <div id="emptyChores" class="text-center p-4 d-none">
+                <i class="fas fa-check-circle fa-3x text-muted mb-2"></i>
+                <p>All quests complete! Talk to the Quest Master (parent) for more adventures.</p>
+              </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="chat-section">
+              <h4><i class="fas fa-comments me-2 text-info"></i> Chat with Quest Master</h4>
+              <div class="d-flex align-items-center mb-2">
+                <span class="badge bg-success me-2"><i class="fas fa-wifi"></i></span>
+                <small class="text-success">Connected with code: <span id="playerConnectedCode">----</span></small>
+              </div>
+              <div id="chatLog" class="chat-log mb-3 p-2 rounded"></div>
+              <div class="input-group">
+                <input type="text" id="playerMessage" class="form-control" placeholder="Type message...">
+                <button class="btn btn-info" onclick="sendMessage('player')">
+                  <i class="fas fa-paper-plane"></i> Send
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Parent Section -->
+      <div id="parentView" class="col-md-12 d-none">
+        <div class="card shadow-lg border-secondary h-100">
+          <div class="card-header bg-secondary bg-opacity-75">
+            <h2 class="card-title mb-0">
+              <i class="fas fa-crown me-2"></i> Parent View
+            </h2>
+          </div>
+          <div class="card-body">
+            <!-- Add New Quest (Chore) -->
+            <div class="add-chore mb-4">
+              <h4><i class="fas fa-plus-circle me-2 text-success"></i> Add New Quest</h4>
+              <div class="input-group mb-3">
+                <input type="text" id="newChore" class="form-control" placeholder="Enter a new chore...">
+                <button class="btn btn-success" onclick="addChore()">
+                  <i class="fas fa-plus"></i> Add Quest
+                </button>
+              </div>
+              <div class="form-text">Create meaningful quests that are clear and achievable</div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="activity-section mb-4">
+              <h4><i class="fas fa-history me-2 text-warning"></i> Adventure Log</h4>
+              <div class="d-flex align-items-center mb-2">
+                <span class="badge bg-success me-2"><i class="fas fa-wifi"></i></span>
+                <small class="text-success">Connected with code: <span id="parentConnectedCode">----</span></small>
+              </div>
+              <div id="activityLog" class="activity-log p-2 rounded mb-3"></div>
+            </div>
+
+            <!-- Chat -->
+            <div class="chat-section">
+              <h4><i class="fas fa-comments me-2 text-info"></i> Chat with Player</h4>
+              <div id="chatLogParent" class="chat-log mb-3 p-2 rounded"></div>
+              <div class="input-group">
+                <input type="text" id="parentMessage" class="form-control" placeholder="Type message...">
+                <button class="btn btn-info" onclick="sendMessage('parent')">
+                  <i class="fas fa-paper-plane"></i> Send
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="mt-4 text-center text-muted">
+      <p>ChoreQuest &copy; 2023 - Making chores fun through gamification</p>
+    </footer>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- ChoreQuest JS -->
+  <script>
+    /**
+     * ChoreQuest - A gamified chore management application with connection codes
+     * Main JavaScript functionality
+     */
+
+    // Application state
+    let currentRole = null; // 'player' or 'parent'
+    let connectionCode = null;
+    let connectionInterval = null;
+    const SYNC_INTERVAL = 5000; // 5 seconds
+
+    // Generate a namespace for localStorage based on connection code
+    function getStorageNamespace() {
+      return `choreQuest_${connectionCode}`;
+    }
+
+    // In-memory data with localStorage persistence
+    let data = {
+      chores: [],
+      xp: 0,
+      level: 1,
+      chat: [],
+      activity: []
+    };
+
+    // Constants for game mechanics
+    const XP_PER_CHORE = 10;
+    const LEVEL_MULTIPLIER = 50;
+
+    /**
+     * Select a role (player or parent)
+     */
+    function selectRole(role) {
+      currentRole = role;
+      document.getElementById('roleSelection').classList.add('d-none');
+      document.getElementById('connectionSetup').classList.remove('d-none');
+      
+      if (role === 'parent') {
+        // Parent creates a code for the player to enter
+        document.getElementById('createCodeSection').classList.remove('d-none');
+        document.getElementById('connectionHeader').innerHTML = 'Create Connection Code';
+        generateCode();
+      } else {
+        // Player enters the code created by the parent
+        document.getElementById('enterCodeSection').classList.remove('d-none');
+        document.getElementById('connectionHeader').innerHTML = 'Enter Connection Code';
+      }
+    }
+
+    /**
+     * Generate a random 4-digit connection code
+     */
+    function generateCode() {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      document.getElementById('connectionCode').textContent = code;
+      connectionCode = code;
+    }
+
+    /**
+     * Setup the connection between parent and player
+     */
+    function setupConnection(isCreator) {
+      if (isCreator) {
+        // This is the parent who created the code
+        if (!connectionCode) {
+          showToast('Please generate a connection code first', 'warning');
+          return;
+        }
+        
+        // Initialize storage for this connection
+        initializeData();
+        
+        // Show the parent view
+        document.getElementById('connectionSetup').classList.add('d-none');
+        document.getElementById('mainContent').classList.remove('d-none');
+        document.getElementById('parentView').classList.remove('d-none');
+        document.getElementById('parentConnectedCode').textContent = connectionCode;
+        
+        // Start sync process
+        startSyncProcess();
+        
+      } else {
+        // This is the player connecting with a code
+        const enteredCode = document.getElementById('codeInput').value.trim();
+        
+        if (!/^\d{4}$/.test(enteredCode)) {
+          showToast('Please enter a valid 4-digit code', 'warning');
+          return;
+        }
+        
+        connectionCode = enteredCode;
+        
+        // Check if this connection exists
+        const namespace = getStorageNamespace();
+        const storedData = localStorage.getItem(namespace);
+        
+        if (!storedData) {
+          showToast('Connection code not found. Please check the code and try again.', 'danger');
+          return;
+        }
+        
+        // Load data for this connection
+        loadData();
+        
+        // Show the player view
+        document.getElementById('connectionSetup').classList.add('d-none');
+        document.getElementById('mainContent').classList.remove('d-none');
+        document.getElementById('playerView').classList.remove('d-none');
+        document.getElementById('playerConnectedCode').textContent = connectionCode;
+        
+        // Start sync process
+        startSyncProcess();
+      }
+      
+      // Initial render
+      renderAll();
+    }
+
+    /**
+     * Initialize data storage for a new connection
+     */
+    function initializeData() {
+      saveData();
+    }
+
+    /**
+     * Start the synchronization process
+     */
+    function startSyncProcess() {
+      // Initial load
+      loadData();
+      
+      // Set up interval to check for updates
+      if (connectionInterval) {
+        clearInterval(connectionInterval);
+      }
+      
+      connectionInterval = setInterval(() => {
+        loadData();
+        renderAll();
+      }, SYNC_INTERVAL);
+    }
+
+    /**
+     * Save current data to localStorage with connection code namespace
+     */
+    function saveData() {
+      const namespace = getStorageNamespace();
+      localStorage.setItem(namespace, JSON.stringify(data));
+    }
+
+    /**
+     * Load data from localStorage with connection code namespace
+     */
+    function loadData() {
+      const namespace = getStorageNamespace();
+      const storedData = localStorage.getItem(namespace);
+      
+      if (storedData) {
+        data = JSON.parse(storedData);
+      }
+    }
+
+    /**
+     * Show a toast notification
+     */
+    function showToast(message, type = 'info') {
+      // Create toast container if it doesn't exist
+      let toastContainer = document.querySelector('.toast-container');
+      if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+      }
+      
+      // Create toast
+      const toast = document.createElement('div');
+      toast.className = `toast show align-items-center text-bg-${type}`;
+      toast.setAttribute('role', 'alert');
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">
+            ${message}
+          </div>
+          <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      
+      toastContainer.appendChild(toast);
+      
+      // Remove after delay
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    /**
+     * Render chores list
+     */
+    function renderChores() {
+      const choreList = document.getElementById("choreList");
+      const emptyChores = document.getElementById("emptyChores");
+      
+      if (!choreList) return; // View not loaded yet
+      
+      choreList.innerHTML = "";
+      
+      if (data.chores.length === 0) {
+        emptyChores.classList.remove("d-none");
+      } else {
+        emptyChores.classList.add("d-none");
+        
+        data.chores.forEach((chore, index) => {
+          const li = document.createElement("li");
+          li.className = "list-group-item d-flex justify-content-between align-items-center";
+          li.innerHTML = `
+            <div>
+              <i class="fas fa-scroll text-warning me-2"></i>
+              <span>${chore}</span>
+            </div>
+            <button class="btn btn-success btn-sm" onclick="completeChore(${index})">
+              <i class="fas fa-check me-1"></i> Complete
+            </button>
+          `;
+          choreList.appendChild(li);
+        });
+      }
+    }
+
+    /**
+     * Calculate XP needed for next level
+     */
+    function calculateXPNeeded() {
+      return data.level * LEVEL_MULTIPLIER;
+    }
+
+    /**
+     * Render XP and level
+     */
+    function renderXP() {
+      const playerLevelEl = document.getElementById("playerLevel");
+      if (!playerLevelEl) return; // View not loaded yet
+      
+      const xpNeeded = calculateXPNeeded();
+      const xpPercentage = (data.xp / xpNeeded) * 100;
+      
+      document.getElementById("playerXP").innerText = data.xp;
+      document.getElementById("playerLevel").innerText = data.level;
+      document.getElementById("xpNeeded").innerText = xpNeeded;
+      
+      const progressBar = document.getElementById("xpProgressBar");
+      progressBar.style.width = `${xpPercentage}%`;
+      progressBar.setAttribute("aria-valuenow", xpPercentage);
+    }
+
+    /**
+     * Render chat messages
+     */
+    function renderChat() {
+      const formatChatMessage = (msg) => {
+        const isPlayer = msg.who === "player";
+        const className = isPlayer ? "player-message" : "parent-message";
+        const name = isPlayer ? "Player" : "Parent";
+        
+        return `
+          <div class="log-item ${className}">
+            <strong>${name}:</strong> ${msg.text}
+          </div>
+        `;
+      };
+      
+      // Player view chat
+      const chatLog = document.getElementById("chatLog");
+      if (chatLog) {
+        chatLog.innerHTML = data.chat.map(formatChatMessage).join("");
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+      
+      // Parent view chat
+      const chatLogParent = document.getElementById("chatLogParent");
+      if (chatLogParent) {
+        chatLogParent.innerHTML = data.chat.map(formatChatMessage).join("");
+        chatLogParent.scrollTop = chatLogParent.scrollHeight;
+      }
+    }
+
+    /**
+     * Render activity log
+     */
+    function renderActivity() {
+      const activityLog = document.getElementById("activityLog");
+      if (!activityLog) return; // View not loaded yet
+      
+      const formatActivity = (item) => {
+        let icon = "fas fa-info-circle text-info";
+        
+        if (item.includes("completed")) {
+          icon = "fas fa-check-circle text-success";
+        } else if (item.includes("added")) {
+          icon = "fas fa-plus-circle text-primary";
+        } else if (item.includes("level up")) {
+          icon = "fas fa-level-up-alt text-warning";
+        }
+        
+        return `
+          <div class="log-item">
+            <i class="${icon} me-2"></i> ${item}
+          </div>
+        `;
+      };
+      
+      const logHTML = data.activity.map(formatActivity).join("");
+      activityLog.innerHTML = logHTML;
+      activityLog.scrollTop = activityLog.scrollHeight;
+    }
+
+    /**
+     * Level up animation
+     */
+    function playLevelUpAnimation() {
+      const levelElement = document.getElementById("playerLevel");
+      if (!levelElement) return;
+      
+      levelElement.classList.add("level-up-animation");
+      
+      // Create a level up toast notification
+      showToast(`🎉 Congratulations! You've reached level ${data.level}!`, 'warning');
+      
+      // Remove animation after delay
+      setTimeout(() => {
+        levelElement.classList.remove("level-up-animation");
+      }, 3000);
+    }
+
+    /**
+     * Complete a chore
+     */
+    function completeChore(index) {
+      // Only allow player to complete chores
+      if (currentRole !== 'player') {
+        showToast('Only players can complete quests', 'warning');
+        return;
+      }
+      
+      const chore = data.chores.splice(index, 1)[0];
+      const prevLevel = data.level;
+      
+      // Add XP
+      data.xp += XP_PER_CHORE;
+      
+      // Check for level up
+      if (data.xp >= calculateXPNeeded()) {
+        data.xp = 0;
+        data.level += 1;
+        data.activity.push(`🎉 LEVEL UP! Player reached level ${data.level}!`);
+      }
+      
+      // Log activity
+      data.activity.push(`Player completed: "${chore}" ✅`);
+      
+      // Save and render
+      saveData();
+      renderAll();
+      
+      // Play level up animation if leveled up
+      if (data.level > prevLevel) {
+        playLevelUpAnimation();
+      }
+    }
+
+    /**
+     * Add a new chore
+     */
+    function addChore() {
+      // Only allow parent to add chores
+      if (currentRole !== 'parent') {
+        showToast('Only parents can add quests', 'warning');
+        return;
+      }
+      
+      const input = document.getElementById("newChore");
+      const chore = input.value.trim();
+      
+      if (chore) {
+        data.chores.push(chore);
+        data.activity.push(`Parent added: "${chore}" ➕`);
+        input.value = "";
+        saveData();
+        renderAll();
+        
+        // Focus back on input for quick entry of multiple chores
+        input.focus();
+      }
+    }
+
+    /**
+     * Send chat message
+     */
+    function sendMessage(who) {
+      // Validate that user is sending as their own role
+      if (currentRole !== who) {
+        showToast(`You cannot send messages as the ${who}`, 'warning');
+        return;
+      }
+      
+      const inputId = who === "player" ? "playerMessage" : "parentMessage";
+      const input = document.getElementById(inputId);
+      const text = input.value.trim();
+      
+      if (text) {
+        data.chat.push({ who, text, timestamp: new Date().toISOString() });
+        input.value = "";
+        saveData();
+        renderChat();
+        
+        // Focus back on input
+        input.focus();
+      }
+    }
+
+    /**
+     * Render all elements
+     */
+    function renderAll() {
+      renderChores();
+      renderXP();
+      renderChat();
+      renderActivity();
+    }
+
+    /**
+     * Initialize the application
+     */
+    function init() {
+      // Set up event listeners for Enter key in inputs
+      document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          // Different handlers based on which input is focused
+          const activeElement = document.activeElement;
+          
+          if (activeElement.id === 'playerMessage') {
+            sendMessage('player');
+          } else if (activeElement.id === 'parentMessage') {
+            sendMessage('parent');
+          } else if (activeElement.id === 'newChore') {
+            addChore();
+          } else if (activeElement.id === 'codeInput') {
+            setupConnection(false);
+          }
+        }
+      });
+    }
+
+    // Initialize the app when DOM is loaded
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
